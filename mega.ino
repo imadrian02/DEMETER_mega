@@ -25,6 +25,10 @@ const int rampSteps = 50;
 
 #define E_STOP 2
 bool e_stop = false;
+bool auto_mode = true;
+
+unsigned long moveStartTime = 0;
+bool moveForwardInProgress = false;
 
 int error = 0;
 byte type = 0;
@@ -34,7 +38,7 @@ unsigned long lastButtonPressTime = 0;
 unsigned long debounceDelay = 100;
 
 PS2X ps2x;
-static Thread thread1, thread2;
+static Thread thread1, thread2, thread3;
 DifferentialDrive loco(leftMotorPwmPin, leftMotorDirectionPin, rightMotorPwmPin, rightMotorDirectionPin, maxSpeed, rampSteps);
 
 
@@ -48,6 +52,10 @@ void setup() {
   WitRegisterCallBack(SensorDataUpdata);
   WitDelayMsRegister(Delayms);
   AutoScanSensor();
+
+  if (auto_mode) {
+    Serial.println("AUTO");
+  }
 
   error = ps2x.config_gamepad(13, 11, 10, 12, false, false);
   if (error == 0) {
@@ -168,19 +176,58 @@ void setup() {
             loco.stop();
             lastButtonPressTime = currentMillis;
           }
+        } else if (ps2x.Button(PSB_GREEN)) {
+          if (auto_mode == true) {
+            auto_mode = false;
+            Serial.println("MANUAL");
+          } else {
+            auto_mode = true;
+            Serial.println("AUTO");
+          }
         }
       }
     }
     delay(50);
   });
 
+  thread3.onRun([]() {
+    if (auto_mode) {
+      if (Serial.available() > 0) {
+        String input = Serial.readStringUntil('\n');
+        if (input.equals("OK")) {
+          moveStartTime = millis();
+          moveForwardInProgress = true;
+          loco.moveForward(0.5, 0.5);
+        }
+      }
+
+      if (moveForwardInProgress && millis() - moveStartTime >= 3000) {
+        loco.stop();
+        moveForwardInProgress = false;
+        Serial.println("OK");
+      }
+    } else if (ps2x.Button(PSB_RED)) {
+      moveStartTime = millis();
+      moveForwardInProgress = true;
+      loco.moveForward(0.5, 0.5);
+    }
+    if (moveForwardInProgress && millis() - moveStartTime >= 3000) {
+      loco.stop();
+      moveForwardInProgress = false;
+      Serial.println("OK_MANUAL");
+    }
+  });
+
   thread1.setInterval(50);
   thread2.setInterval(50);
+  thread3.setInterval(50);
   thread1.enabled = true;
   thread2.enabled = true;
+  thread3.enabled = true;
 }
 
 void loop() {
   thread1.run();
   thread2.run();
+  thread3.run();
 }
