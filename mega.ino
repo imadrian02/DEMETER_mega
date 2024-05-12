@@ -149,40 +149,49 @@ void setup() {
       if (currentMillis - lastButtonPressTime >= debounceDelay) {
         if (ps2x.Button(PSB_PAD_UP)) {
           Serial.println("FORWARD");
-          loco.moveForward(0.5, 0.5);
+          loco.moveForward(0.4, 0.6);
           lastButtonPressTime = currentMillis;
         } else if (ps2x.Button(PSB_PAD_LEFT)) {
           Serial.println("LEFT");
           if (!ps2x.Button(PSB_L2)) {
-            loco.turnLeft(0.25, 0.75, true);
+            loco.turnLeft(0.20, 0.80, true);
           } else {
-            loco.turnLeft(0.25, 0.75, false);
+            loco.turnLeft(0.20, 0.80, false);
           }
           lastButtonPressTime = currentMillis;
         } else if (ps2x.Button(PSB_PAD_RIGHT)) {
           Serial.println("RIGHT");
           if (!ps2x.Button(PSB_L2)) {
-            loco.turnRight(0.75, 0.25, true);
+            loco.turnRight(0.70, 0.30, true);
           } else {
-            loco.turnRight(0.75, 0.25, false);
+            loco.turnRight(0.70, 0.30, false);
           }
           lastButtonPressTime = currentMillis;
         } else if (ps2x.Button(PSB_PAD_DOWN)) {
-          Serial.println("BACK");
-          loco.moveBackward(0.5, 0.5);
+          Serial.pr
+          
+          
+          
+          intln("BACK");
+          loco.moveBackward(0.4, 0.6);
           lastButtonPressTime = currentMillis;
+        } else if (ps2x.Button(PSB_PINK)) {
+          auto_mode = false;
+          Serial.println
+
+            ("MANUAL");
+        } else if (ps2x.Button(PSB_GREEN)) {
+          auto_mode = true;
+          Serial.println("AUTO");
+        } else if (ps2x.Button(PSB_BLUE)) {
+          e_stop = true;
+          Serial.println("ESTOP");
+          digitalWrite(E_STOP, LOW);
+          delay(100);
         } else if (!ps2x.Button(PSB_PAD_DOWN) && !ps2x.Button(PSB_PAD_UP) && !ps2x.Button(PSB_PAD_RIGHT) && !ps2x.Button(PSB_PAD_LEFT)) {
           if (ps2x.Button(PSB_L1)) {
             loco.stop();
             lastButtonPressTime = currentMillis;
-          }
-        } else if (ps2x.Button(PSB_GREEN)) {
-          if (auto_mode == true) {
-            auto_mode = false;
-            Serial.println("MANUAL");
-          } else {
-            auto_mode = true;
-            Serial.println("AUTO");
           }
         }
       }
@@ -192,28 +201,26 @@ void setup() {
 
   thread3.onRun([]() {
     if (auto_mode) {
+
       if (Serial.available() > 0) {
         String input = Serial.readStringUntil('\n');
         if (input.equals("OK")) {
           moveStartTime = millis();
           moveForwardInProgress = true;
-          loco.moveForward(0.5, 0.5);
         }
       }
 
-      if (moveForwardInProgress && millis() - moveStartTime >= 3000) {
+      if (moveForwardInProgress && millis() - moveStartTime >= 2000) {
         loco.stop();
         moveForwardInProgress = false;
         Serial.println("OK");
+      } else {
+        if (moveForwardInProgress) {
+          loco.moveForward(0.4, 0.4);
+        }
       }
+
     } else if (ps2x.Button(PSB_RED)) {
-      moveStartTime = millis();
-      moveForwardInProgress = true;
-      loco.moveForward(0.5, 0.5);
-    }
-    if (moveForwardInProgress && millis() - moveStartTime >= 3000) {
-      loco.stop();
-      moveForwardInProgress = false;
       Serial.println("OK_MANUAL");
     }
   });
